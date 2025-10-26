@@ -1,14 +1,14 @@
+# API Documentation
+
 ## POST /users/register
 
 Description
 ---------
 
-Register a new user. This endpoint validates the incoming payload (email and password) and creates a user record.
+Register a new user. This endpoint validates the incoming payload (username, email and password) and creates a user record.
 
-Mount point
------------
-
-In this project the router is mounted at `/users` (see `Backend/app.js`), so the full path is:
+Mount Point
+---------
 
 POST /users/register
 
@@ -24,7 +24,6 @@ The endpoint expects a JSON body with the following fields:
 
 - `email` (string) — required, must be a valid email address
 - `password` (string) — required, minimum length 6 characters
-
 - `username` (string) — required by the user model, should be a non-empty string (trimmed).
 
 Example request
@@ -49,14 +48,135 @@ Responses (common)
 Notes
 -----
 
-- The validation rules are implemented in `Backend/routes/user.routes.js` using `express-validator` (see `body("email").isEmail()` and `body("password").isLength({ min: 6 })`).
+- The validation rules are implemented in `Backend/routes/user.routes.js` using `express-validator` (see `body("email").isEmail()` , `body("password").isLength({ min: 6 })` and `body('username').trim().notEmpty().withMessage('username is required')`).
 - Ensure you start the server from the `Backend` folder or load your `.env` properly (dotenv is required in `Backend/app.js`).
 
-- Note: The `username` field is used by the controller and is required in the Mongoose `user` model (see `Backend/models/user.js`). However, the current route validation in `Backend/routes/user.routes.js` does not validate `username`. If you want request-time validation, add a rule like:
+## POST /users/login
 
-```js
-body('username').trim().notEmpty().withMessage('username is required'),
+Description
+---------
+
+Authenticate an existing user and receive an authentication token.
+
+
+Request body
+------------
+
+The endpoint expects a JSON body with the following fields:
+
+- `email` (string) — required, must be a valid email address
+- `password` (string) — required, minimum length 6 characters
+
+Example request
+---------------
+
+```json
+{
+  "email": "user@example.com",
+  "password": "secret123"
+}
 ```
 
-placed alongside the existing `body("email")` and `body("password")` validators.
+Responses
+---------
+
+- 200 OK — Login successful. Response includes:
+  ```json
+  {
+    "token": "JWT_TOKEN_STRING",
+    "user": {
+      // User object (password excluded)
+    }
+  }
+  ```
+- 400 Bad Request — Cases:
+  - Validation failed (invalid email format or password too short)
+  - Invalid credentials (email not found or password doesn't match)
+  - Response includes either validation errors array or `{"message": "invalid credentials"}`
+- 500 Internal Server Error — Unexpected server error
+
+Notes
+-----
+
+- Password is compared using bcrypt (see `Backend/models/user.js`)
+- JWT token is generated using the user's ID and `JWT_SECRET` from environment variables
+- The returned user object will not include the password field (Mongoose schema has `select: false` for password)
+- The token is also set as an HTTP-only cookie named "token"
+
+## GET /users/profile
+
+Description
+---------
+
+Get the profile information of the currently authenticated user.
+
+Authentication
+-------------
+
+Requires a valid JWT token, provided in one of these ways:
+- Bearer token in Authorization header: `Authorization: Bearer YOUR_JWT_TOKEN`
+- Cookie: `token=YOUR_JWT_TOKEN`
+
+Request
+-------
+
+No request body needed. Just send the request with proper authentication.
+
+Responses
+---------
+
+- 200 OK — Successfully retrieved user profile:
+  ```json
+  {
+    "user": {
+      "_id": "user_id",
+      "username": "alice",
+      "email": "user@example.com",
+      "createdAt": "2025-10-26T..."
+      // password field is excluded
+    }
+  }
+  ```
+- 401 Unauthorized — No token provided or invalid token
+- 404 Not Found — User not found (e.g., if user was deleted but token still valid)
+
+## GET /users/logout
+
+Description
+---------
+
+Log out the currently authenticated user by invalidating their token.
+
+Authentication
+-------------
+
+Requires a valid JWT token, provided in one of these ways:
+- Bearer token in Authorization header: `Authorization: Bearer YOUR_JWT_TOKEN`
+- Cookie: `token=YOUR_JWT_TOKEN`
+
+Request
+-------
+
+No request body needed. Just send the request with proper authentication.
+
+Responses
+---------
+
+- 200 OK — Successfully logged out:
+  ```json
+  {
+    "message": "Logged out successfully"
+  }
+  ```
+- 401 Unauthorized — No token provided or invalid token
+
+Notes
+-----
+
+The logout process:
+1. Clears the "token" cookie if it exists
+2. Adds the token to a blacklist (stored in database)
+3. Future requests with this token will be rejected
+
+
 
