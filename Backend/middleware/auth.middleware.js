@@ -1,7 +1,7 @@
 const userModel = require("../models/user");
 const jwt = require("jsonwebtoken");
 const blacklistTokenModel = require('../models/blacklistToken.model'); 
-
+const captainModel = require("../models/captain.model");
 
 
 //user authentication hai ya nhi 

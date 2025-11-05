@@ -1,7 +1,7 @@
 const captainModel = require("../models/captain.model");
 const captainService = require("../services/captain.service");
 const { validationResult } = require("express-validator");
-
+const blacklistTokenModel = require("../models/blacklistToken.model");
 
 module.exports.registerCaptain = async(req,res,next) => {
     const errors = validationResult(req);
@@ -58,19 +58,22 @@ res.status(200).json({ token,captain });
 }
 
 module.exports.getCaptainProfile = async(req,res,next) => {
-    const userId = req.user.id;
-    const user = await userModel.findById(userId).select("-password");
-    if(!user){
-        return res.status(404).json({ message: "User not found" });
+    // authenticateCaptain middleware sets `req.captain`.
+    const captain = req.captain;
+    if (!captain) {
+        return res.status(401).json({ message: "Unauthorized" });
     }
-    res.status(200).json({ user });
-}
+    // return the captain object (password is excluded by schema `select: false`)
+    res.status(200).json({ captain });
+};
 
-module.exports.logoutCaptain = async(req,res,next) => {
+module.exports.logoutCaptain = async (req, res, next) => {
     res.clearCookie("token");
-    const token = req.headers.authorization.split(' ')[1] || req.cookies.token;
-    
-    await blacklistTokenModel.create({ token });
+    const token = req.headers.authorization?.split(' ')[1] || req.cookies?.token;
+
+    if (token) {
+        await blacklistTokenModel.create({ token });
+    }
     res.clearCookie("token");
     res.status(200).json({ message: "Logged out successfully" });
-}
+``};
