@@ -201,7 +201,7 @@ Notes
 - License plate numbers must be unique across all captains
 - Location tracking fields (`lat`, `lon`) can be updated later
 
-## GET /users/profile
+## GET /users/profile or /captains/profile
 
 Description
 ---------
@@ -238,7 +238,7 @@ Responses
 - 401 Unauthorized — No token provided or invalid token
 - 404 Not Found — User not found (e.g., if user was deleted but token still valid)
 
-## GET /users/logout
+## GET /users/logout or /captains/logout
 
 Description
 ---------
